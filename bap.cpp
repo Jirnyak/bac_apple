@@ -157,8 +157,8 @@ int main() {
         }
     }
 
-    int TICKS_PER_FRAME = 10;
-    int simulation_ticks = 40 * 10;
+    int TICKS_PER_FRAME = 100;
+    int simulation_ticks = 40 * 100;
 
     bool quit = false;
     bool paused = false;
@@ -415,63 +415,63 @@ int main() {
                 new_children.clear();
 
                 simulation_ticks++;
+                // ==== Build pixels and save BMP every tick ====
+                std::fill(pixels.begin(), pixels.end(), 0xFF000000); 
+
+                vector<int> occupying;
+                occupying.reserve(8);
+                for (int py = 0; py < WINDOW_HEIGHT; py++) {
+                    for (int px = 0; px < WINDOW_WIDTH; px++) {
+                        occupying.clear();
+                        for (int dy2 = 0; dy2 < 2; dy2++) {
+                            for (int dx2 = 0; dx2 < 2; dx2++) {
+                                int bx = px * 2 + dx2;
+                                int by = py * 2 + dy2;
+                                for (int l = 0; l < 8; l++) {
+                                    int bpos = by * WORLD_WIDTH + bx;
+                                    int b_idx = world_grid[l][bpos];
+                                    if (b_idx >= 0 && !bacs[b_idx].is_dormant) {
+                                        occupying.push_back(b_idx);
+                                    }
+                                }
+                            }
+                        }
+                        if (!occupying.empty()) {
+                            int chosen = occupying[xorshift32() % occupying.size()];
+                            const Bac& b = bacs[chosen];
+                            pixels[py * WINDOW_WIDTH + px] = 0xFF000000 | (b.r << 16) | (b.g << 8) | b.b;
+                        }
+                    }
+                }
+
+                SDL_Surface* out_surf_32 = SDL_CreateRGBSurfaceFrom(pixels.data(), WINDOW_WIDTH, WINDOW_HEIGHT, 32, WINDOW_WIDTH * 4, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+                SDL_Surface* out_surf_24 = SDL_CreateRGBSurface(0, WINDOW_WIDTH, WINDOW_HEIGHT, 24, 0x0000FF, 0x00FF00, 0xFF0000, 0);
+                SDL_BlitSurface(out_surf_32, NULL, out_surf_24, NULL);
+                string out_path = "output_frames/frame_" + to_string(frames_total) + ".bmp";
+                SDL_SaveBMP(out_surf_24, out_path.c_str());
+                SDL_FreeSurface(out_surf_24);
+                SDL_FreeSurface(out_surf_32);
+                frames_total++;
+
+                if (frames_total >= 650000) { // Set a much higher limit for output frames
+                    cout << "Reached 650000 frames. Stopping simulation automatically!" << endl;
+                    quit = true;
+                    break;
+                }
             }
 
             read_im(world_white, simulation_ticks / TICKS_PER_FRAME);
 
-            std::fill(pixels.begin(), pixels.end(), 0xFF000000); 
-
-            // Rendering: For each pixel, collect all occupying phenotypes
-            // and pick one randomly to draw
-            vector<int> occupying;
-            occupying.reserve(8);
-            for (int py = 0; py < WINDOW_HEIGHT; py++) {
-                for (int px = 0; px < WINDOW_WIDTH; px++) {
-                    occupying.clear();
-                    for (int dy2 = 0; dy2 < 2; dy2++) {
-                        for (int dx2 = 0; dx2 < 2; dx2++) {
-                            int bx = px * 2 + dx2;
-                            int by = py * 2 + dy2;
-                            for (int l = 0; l < 8; l++) {
-                                int bpos = by * WORLD_WIDTH + bx;
-                                int b_idx = world_grid[l][bpos];
-                                if (b_idx >= 0 && !bacs[b_idx].is_dormant) {
-                                    occupying.push_back(b_idx);
-                                }
-                            }
-                        }
-                    }
-                    if (!occupying.empty()) {
-                        int chosen = occupying[xorshift32() % occupying.size()];
-                        const Bac& b = bacs[chosen];
-                        pixels[py * WINDOW_WIDTH + px] = 0xFF000000 | (b.r << 16) | (b.g << 8) | b.b;
-                    }
-                }
-            }
-
+            // Render to screen ONLY once per TICKS_PER_FRAME
             SDL_UpdateTexture(texture, NULL, pixels.data(), WINDOW_WIDTH * sizeof(uint32_t));
             SDL_RenderCopy(renderer, texture, NULL, NULL);
             SDL_RenderPresent(renderer);
-
-            SDL_Surface* out_surf_32 = SDL_CreateRGBSurfaceFrom(pixels.data(), WINDOW_WIDTH, WINDOW_HEIGHT, 32, WINDOW_WIDTH * 4, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
-            SDL_Surface* out_surf_24 = SDL_CreateRGBSurface(0, WINDOW_WIDTH, WINDOW_HEIGHT, 24, 0x0000FF, 0x00FF00, 0xFF0000, 0);
-            SDL_BlitSurface(out_surf_32, NULL, out_surf_24, NULL);
-            string out_path = "output_frames/frame_" + to_string(frames_total) + ".bmp";
-            SDL_SaveBMP(out_surf_24, out_path.c_str());
-            SDL_FreeSurface(out_surf_24);
-            SDL_FreeSurface(out_surf_32);
-            frames_total++;
-
-            if (frames_total >= 19530) {
-                cout << "Reached 19530 frames. Stopping simulation automatically!" << endl;
-                quit = true;
-            }
 
             frames++;
             auto current_time = std::chrono::steady_clock::now();
             std::chrono::duration<double> elapsed = current_time - last_time;
             if (elapsed.count() >= 1.0) {
-                cout << "FPS: " << frames << " | Pop: " << bacs.size() << " | Frame: " << (simulation_ticks / TICKS_PER_FRAME) << endl;
+                cout << "Screen updates / sec: " << frames << " | Pop: " << bacs.size() << " | Mask Frame: " << (simulation_ticks / TICKS_PER_FRAME) << " | Saved BMPs: " << frames_total << endl;
                 frames = 0;
                 last_time = current_time;
             }
