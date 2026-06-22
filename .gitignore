@@ -1,0 +1,7 @@
+output_frames/
+*.mp4
+test_*
+!test_*.cpp
+.DS_Store
+bapple
+*.o
