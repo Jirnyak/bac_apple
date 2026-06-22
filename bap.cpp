@@ -261,7 +261,7 @@ int main() {
                                 int n_idx = world_grid[l][ny * WORLD_WIDTH + nx];
                                 if (n_idx >= 0) {
                                     Bac& n = bacs[n_idx];
-                                    if (!n.is_spore && !n.is_dead) {
+                                    if (!n.is_spore && !n.is_dead && !n.is_dormant) {
                                         if (!n.is_predator()) {
                                             non_predators[non_predator_count++] = n_idx;
                                         } else {
