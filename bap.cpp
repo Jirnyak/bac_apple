@@ -247,24 +247,73 @@ int main() {
                     }
 
                     if (b.is_predator()) {
-                        // Look for prey across all layers in the same cell and adjacent cells
-                        bool ate = false;
-                        for (int dir = 0; dir < 5 && !ate; dir++) {
+                        int non_predators[40];
+                        int non_predator_count = 0;
+                        int other_predators[40];
+                        int other_predator_count = 0;
+
+                        // Gather potential prey
+                        for (int dir = 0; dir < 5; dir++) {
                             int nx = tor_cord(b.x + dx[dir], WORLD_WIDTH);
                             int ny = tor_cord(b.y + dy[dir], WORLD_LENGTH);
-                            for (int l = 0; l < 8 && !ate; l++) {
+                            for (int l = 0; l < 8; l++) {
                                 if (l == b_layer) continue; // Don't eat same phenotype
                                 int n_idx = world_grid[l][ny * WORLD_WIDTH + nx];
                                 if (n_idx >= 0) {
                                     Bac& n = bacs[n_idx];
                                     if (!n.is_spore && !n.is_dead) {
-                                        b.hp += n.hp;
-                                        n.hp = 0;
-                                        n.is_dead = true;
-                                        world_grid[l][ny * WORLD_WIDTH + nx] = -1; 
-                                        ate = true;
+                                        if (!n.is_predator()) {
+                                            non_predators[non_predator_count++] = n_idx;
+                                        } else {
+                                            other_predators[other_predator_count++] = n_idx;
+                                        }
                                     }
                                 }
+                            }
+                        }
+
+                        if (non_predator_count > 0) {
+                            int target_idx = non_predators[xorshift32() % non_predator_count];
+                            Bac& n = bacs[target_idx];
+                            b.hp += n.hp;
+                            n.hp = 0;
+                            n.is_dead = true;
+                            world_grid[n.phenotype_idx()][n.y * WORLD_WIDTH + n.x] = -1; 
+                        } else if (other_predator_count > 0) {
+                            int my_allies = 0;
+                            for (int d = 0; d < 5; d++) {
+                                int nx = tor_cord(b.x + dx[d], WORLD_WIDTH);
+                                int ny = tor_cord(b.y + dy[d], WORLD_LENGTH);
+                                if (world_grid[b_layer][ny * WORLD_WIDTH + nx] >= 0) my_allies++;
+                            }
+
+                            int valid_other_predators[40];
+                            int valid_count = 0;
+
+                            for (int i = 0; i < other_predator_count; i++) {
+                                int n_idx = other_predators[i];
+                                Bac& n = bacs[n_idx];
+                                int n_layer = n.phenotype_idx();
+                                
+                                int their_allies = 0;
+                                for (int d = 0; d < 5; d++) {
+                                    int nx = tor_cord(n.x + dx[d], WORLD_WIDTH);
+                                    int ny = tor_cord(n.y + dy[d], WORLD_LENGTH);
+                                    if (world_grid[n_layer][ny * WORLD_WIDTH + nx] >= 0) their_allies++;
+                                }
+
+                                if (my_allies > their_allies) {
+                                    valid_other_predators[valid_count++] = n_idx;
+                                }
+                            }
+
+                            if (valid_count > 0) {
+                                int target_idx = valid_other_predators[xorshift32() % valid_count];
+                                Bac& n = bacs[target_idx];
+                                b.hp += n.hp;
+                                n.hp = 0;
+                                n.is_dead = true;
+                                world_grid[n.phenotype_idx()][n.y * WORLD_WIDTH + n.x] = -1; 
                             }
                         }
                     }
