@@ -12,8 +12,6 @@ using namespace std;
 #define WORLD_LENGTH 1080
 #define WINDOW_WIDTH 720
 #define WINDOW_HEIGHT 540
-#define SNUMBER 3000000
-#define MAX_SPORES 100000 
 
 uint32_t xorshift32_state = 123456789;
 inline uint32_t xorshift32() {
@@ -30,7 +28,6 @@ inline float fast_randf() {
 }
 
 struct Bac {
-    float float_x, float_y; // For spores
     int x, y;               // Grid coordinates
     int food;
     bool is_spore;
@@ -57,11 +54,10 @@ inline int tor_cord(int val, int max_val) {
     return val;
 }
 
-Bac create_bac(float fx, float fy, bool as_spore, uint8_t r = 0, uint8_t g = 0, uint8_t b = 0, bool inherit_color = false) {
+Bac create_bac(int x, int y, bool as_spore, uint8_t r = 0, uint8_t g = 0, uint8_t b = 0, bool inherit_color = false) {
     Bac bac;
-    bac.float_x = fx; bac.float_y = fy;
-    bac.x = tor_cord((int)fx, WORLD_WIDTH);
-    bac.y = tor_cord((int)fy, WORLD_LENGTH);
+    bac.x = tor_cord(x, WORLD_WIDTH);
+    bac.y = tor_cord(y, WORLD_LENGTH);
     bac.food = 10;
     bac.is_spore = as_spore;
     bac.is_dormant = false;
@@ -127,13 +123,16 @@ int main() {
     
     vector<Bac> bacs;
     vector<Bac> new_children;
-    bacs.reserve(SNUMBER + MAX_SPORES);
-    new_children.reserve(SNUMBER);
+    bacs.reserve(WORLD_WIDTH * WORLD_LENGTH * 2);
+    new_children.reserve(100000);
 
-    int current_spores = 0;
-    for (int k = 0; k < MAX_SPORES; k++) {
-        bacs.push_back(create_bac(xorshift32() % WORLD_WIDTH, xorshift32() % WORLD_LENGTH, true));
-        current_spores++;
+    for (int k = 0; k < WORLD_WIDTH * WORLD_LENGTH / 2; k++) {
+        Bac bac = create_bac(xorshift32() % WORLD_WIDTH, xorshift32() % WORLD_LENGTH, false);
+        int layer = bac.phenotype_idx();
+        if (world_grid[layer][bac.y * WORLD_WIDTH + bac.x] == -1) {
+            world_grid[layer][bac.y * WORLD_WIDTH + bac.x] = bacs.size();
+            bacs.push_back(bac);
+        }
     }
 
     int TICKS_PER_FRAME = 10; 
@@ -179,8 +178,6 @@ int main() {
                     }
                 }
 
-                current_spores = 0; 
-
                 for (int i = 0; i < bacs.size(); i++) {
                     Bac& b = bacs[i];
                     if (b.is_dead) continue;
@@ -188,10 +185,8 @@ int main() {
                     bool is_white = world_white[b.y * WORLD_WIDTH + b.x];
 
                     if (b.is_spore) {
-                        b.float_x += (int)(xorshift32() % 60) - 30;
-                        b.float_y += (int)(xorshift32() % 60) - 30;
-                        b.x = tor_cord((int)b.float_x, WORLD_WIDTH);
-                        b.y = tor_cord((int)b.float_y, WORLD_LENGTH);
+                        b.x = tor_cord(b.x + (xorshift32() % 3) - 1, WORLD_WIDTH);
+                        b.y = tor_cord(b.y + (xorshift32() % 3) - 1, WORLD_LENGTH);
                         
                         is_white = world_white[b.y * WORLD_WIDTH + b.x];
                         
@@ -199,13 +194,9 @@ int main() {
                             int layer = b.phenotype_idx();
                             if (world_grid[layer][b.y * WORLD_WIDTH + b.x] == -1) {
                                 b.is_spore = false;
-                                b.food = 10;
                                 world_grid[layer][b.y * WORLD_WIDTH + b.x] = i;
-                                continue;
                             }
                         }
-                        current_spores++;
-                        continue;
                     }
 
                     int b_layer = b.phenotype_idx();
@@ -243,6 +234,19 @@ int main() {
                     if (!b.is_predator() && is_white) {
                         b.food += 2; 
                     }
+
+                    if (b.food <= 0) {
+                        if (b.is_hibernator() && !b.is_spore) {
+                            b.is_dormant = true;
+                            b.food = 0; // lock at 0
+                        } else {
+                            b.is_dead = true;
+                            if (!b.is_spore) world_grid[b_layer][b.y * WORLD_WIDTH + b.x] = -1;
+                        }
+                        continue;
+                    }
+
+                    if (b.is_spore) continue;
 
                     if (b.is_predator()) {
                         int non_predators[40];
@@ -341,17 +345,17 @@ int main() {
                         if (world_grid[b_layer][ny * WORLD_WIDTH + nx] == -1) {
                             world_grid[b_layer][b.y * WORLD_WIDTH + b.x] = -1;
                             b.x = nx; b.y = ny;
-                            b.float_x = nx; b.float_y = ny;
                             world_grid[b_layer][b.y * WORLD_WIDTH + b.x] = i;
                         }
                     }
 
-                    if (b.food >= 20 && (bacs.size() + new_children.size() < SNUMBER)) {
+                    if (b.food >= 20) {
                         int dir = 1 + (xorshift32() % 4);
                         int nx = tor_cord(b.x + dx[dir], WORLD_WIDTH);
                         int ny = tor_cord(b.y + dy[dir], WORLD_LENGTH);
                         
-                        Bac child = create_bac((float)nx, (float)ny, false, b.r, b.g, b.b, true);
+                        bool is_child_spore = (xorshift32() % 2 == 0);
+                        Bac child = create_bac(nx, ny, is_child_spore, b.r, b.g, b.b, true);
                         if (xorshift32() % 2 == 0) {
                             int channel = xorshift32() % 3;
                             if (channel == 0) {
@@ -363,21 +367,16 @@ int main() {
                             }
                         }
                         
-                        int c_layer = child.phenotype_idx();
-                        if (world_grid[c_layer][ny * WORLD_WIDTH + nx] == -1) {
+                        if (is_child_spore) {
                             b.food -= 10;
                             new_children.push_back(child);
-                            world_grid[c_layer][ny * WORLD_WIDTH + nx] = -2; // Reserve
-                        }
-                    }
-
-                    if (b.food <= 0) {
-                        if (b.is_hibernator()) {
-                            b.is_dormant = true;
-                            b.food = 0; // lock at 0
                         } else {
-                            b.is_dead = true;
-                            world_grid[b_layer][b.y * WORLD_WIDTH + b.x] = -1;
+                            int c_layer = child.phenotype_idx();
+                            if (world_grid[c_layer][ny * WORLD_WIDTH + nx] == -1) {
+                                b.food -= 10;
+                                new_children.push_back(child);
+                                world_grid[c_layer][ny * WORLD_WIDTH + nx] = -2; // Reserve
+                            }
                         }
                     }
                 }
@@ -394,11 +393,6 @@ int main() {
                     bacs.push_back(child);
                 }
                 new_children.clear();
-
-                while (current_spores < MAX_SPORES) {
-                    bacs.push_back(create_bac(xorshift32() % WORLD_WIDTH, xorshift32() % WORLD_LENGTH, true));
-                    current_spores++;
-                }
 
                 simulation_ticks++;
             }
@@ -456,7 +450,7 @@ int main() {
             auto current_time = std::chrono::steady_clock::now();
             std::chrono::duration<double> elapsed = current_time - last_time;
             if (elapsed.count() >= 1.0) {
-                cout << "FPS: " << frames << " | Awake: " << (bacs.size() - current_spores) << " | Spores: " << current_spores << " | Frame: " << (simulation_ticks / TICKS_PER_FRAME) << endl;
+                cout << "FPS: " << frames << " | Pop: " << bacs.size() << " | Frame: " << (simulation_ticks / TICKS_PER_FRAME) << endl;
                 frames = 0;
                 last_time = current_time;
             }
