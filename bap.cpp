@@ -28,7 +28,7 @@ inline float fast_randf() {
 }
 
 struct Bac {
-    int x, y;               // Grid coordinates
+    int pos;               // Grid coordinates
     int food;
     bool is_spore;
     bool is_dormant;
@@ -48,16 +48,28 @@ struct Bac {
     }
 };
 
-inline int tor_cord(int val, int max_val) {
-    val = val % max_val;
-    if (val < 0) val += max_val;
-    return val;
+int grid_neighbors[WORLD_WIDTH * WORLD_LENGTH][4];
+
+void init_neighbors() {
+    for (int y = 0; y < WORLD_LENGTH; y++) {
+        for (int x = 0; x < WORLD_WIDTH; x++) {
+            int pos = y * WORLD_WIDTH + x;
+            int up_y = (y == 0) ? WORLD_LENGTH - 1 : y - 1;
+            int down_y = (y == WORLD_LENGTH - 1) ? 0 : y + 1;
+            int left_x = (x == 0) ? WORLD_WIDTH - 1 : x - 1;
+            int right_x = (x == WORLD_WIDTH - 1) ? 0 : x + 1;
+            
+            grid_neighbors[pos][0] = up_y * WORLD_WIDTH + x;
+            grid_neighbors[pos][1] = y * WORLD_WIDTH + right_x;
+            grid_neighbors[pos][2] = down_y * WORLD_WIDTH + x;
+            grid_neighbors[pos][3] = y * WORLD_WIDTH + left_x;
+        }
+    }
 }
 
-Bac create_bac(int x, int y, bool as_spore, uint8_t r = 0, uint8_t g = 0, uint8_t b = 0, bool inherit_color = false) {
+Bac create_bac(int pos, bool as_spore, uint8_t r = 0, uint8_t g = 0, uint8_t b = 0, bool inherit_color = false) {
     Bac bac;
-    bac.x = tor_cord(x, WORLD_WIDTH);
-    bac.y = tor_cord(y, WORLD_LENGTH);
+    bac.pos = pos;
     bac.food = 10;
     bac.is_spore = as_spore;
     bac.is_dormant = false;
@@ -113,6 +125,7 @@ int main() {
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     SDL_Texture* texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WINDOW_WIDTH, WINDOW_HEIGHT);
 
+    init_neighbors();
     vector<bool> world_white(WORLD_WIDTH * WORLD_LENGTH, false);
     
     // 8 layers for 8 phenotypes
@@ -127,15 +140,15 @@ int main() {
     new_children.reserve(100000);
 
     for (int k = 0; k < WORLD_WIDTH * WORLD_LENGTH / 2; k++) {
-        Bac bac = create_bac(xorshift32() % WORLD_WIDTH, xorshift32() % WORLD_LENGTH, false);
+        Bac bac = create_bac(xorshift32() % (WORLD_WIDTH * WORLD_LENGTH), false);
         int layer = bac.phenotype_idx();
-        if (world_grid[layer][bac.y * WORLD_WIDTH + bac.x] == -1) {
-            world_grid[layer][bac.y * WORLD_WIDTH + bac.x] = bacs.size();
+        if (world_grid[layer][bac.pos] == -1) {
+            world_grid[layer][bac.pos] = bacs.size();
             bacs.push_back(bac);
         }
     }
 
-    int TICKS_PER_FRAME = 10; 
+    int TICKS_PER_FRAME = 100; 
     int PHYSICS_STEPS = TICKS_PER_FRAME;
     int simulation_ticks = 40 * TICKS_PER_FRAME;
 
@@ -150,8 +163,6 @@ int main() {
     read_im(world_white, simulation_ticks / TICKS_PER_FRAME);
     vector<uint32_t> pixels(WINDOW_WIDTH * WINDOW_HEIGHT, 0xFF000000);
 
-    const int dx[5] = {0, 0, 0, -1, 1};
-    const int dy[5] = {0, -1, 1, 0, 0};
 
     while (!quit) {
         Uint32 loop_start = SDL_GetTicks();
@@ -174,7 +185,7 @@ int main() {
                 for (int i = 0; i < bacs.size(); i++) {
                     if (!bacs[i].is_spore && !bacs[i].is_dead) {
                         int layer = bacs[i].phenotype_idx();
-                        world_grid[layer][bacs[i].y * WORLD_WIDTH + bacs[i].x] = i;
+                        world_grid[layer][bacs[i].pos] = i;
                     }
                 }
 
@@ -182,19 +193,18 @@ int main() {
                     Bac& b = bacs[i];
                     if (b.is_dead) continue;
 
-                    bool is_white = world_white[b.y * WORLD_WIDTH + b.x];
+                    bool is_white = world_white[b.pos];
 
                     if (b.is_spore) {
-                        b.x = tor_cord(b.x + (xorshift32() % 3) - 1, WORLD_WIDTH);
-                        b.y = tor_cord(b.y + (xorshift32() % 3) - 1, WORLD_LENGTH);
+                        b.pos = grid_neighbors[b.pos][xorshift32() % 4];
                         
-                        is_white = world_white[b.y * WORLD_WIDTH + b.x];
+                        is_white = world_white[b.pos];
                         
                         if (is_white) {
                             int layer = b.phenotype_idx();
-                            if (world_grid[layer][b.y * WORLD_WIDTH + b.x] == -1) {
+                            if (world_grid[layer][b.pos] == -1) {
                                 b.is_spore = false;
-                                world_grid[layer][b.y * WORLD_WIDTH + b.x] = i;
+                                world_grid[layer][b.pos] = i;
                             }
                         }
                     }
@@ -207,12 +217,11 @@ int main() {
                             can_wake = true;
                         } else if (b.is_predator()) {
                             // Check for prey
-                            for (int dir = 0; dir < 5; dir++) {
-                                int nx = tor_cord(b.x + dx[dir], WORLD_WIDTH);
-                                int ny = tor_cord(b.y + dy[dir], WORLD_LENGTH);
+                            for (int dir = 0; dir < 4; dir++) {
+                                int npos = grid_neighbors[b.pos][dir];
                                 for (int l = 0; l < 8; l++) {
                                     if (l == b_layer) continue;
-                                    int n_idx = world_grid[l][ny * WORLD_WIDTH + nx];
+                                    int n_idx = world_grid[l][npos];
                                     if (n_idx >= 0 && !bacs[n_idx].is_dead && !bacs[n_idx].is_spore) {
                                         can_wake = true; break;
                                     }
@@ -242,7 +251,7 @@ int main() {
                             b.food = 0; // lock at 0
                         } else {
                             b.is_dead = true;
-                            if (!b.is_spore) world_grid[b_layer][b.y * WORLD_WIDTH + b.x] = -1;
+                            if (!b.is_spore) world_grid[b_layer][b.pos] = -1;
                         }
                         continue;
                     }
@@ -254,12 +263,11 @@ int main() {
                         int other_predator_count = 0;
 
                         // Gather potential prey
-                        for (int dir = 0; dir < 5; dir++) {
-                            int nx = tor_cord(b.x + dx[dir], WORLD_WIDTH);
-                            int ny = tor_cord(b.y + dy[dir], WORLD_LENGTH);
+                        for (int dir = 0; dir < 4; dir++) {
+                            int npos = grid_neighbors[b.pos][dir];
                             for (int l = 0; l < 8; l++) {
                                 if (l == b_layer) continue; // Don't eat same phenotype
-                                int n_idx = world_grid[l][ny * WORLD_WIDTH + nx];
+                                int n_idx = world_grid[l][npos];
                                 if (n_idx >= 0) {
                                     Bac& n = bacs[n_idx];
                                     if (!n.is_spore && !n.is_dead && !n.is_dormant) {
@@ -279,13 +287,12 @@ int main() {
                             b.food += n.food;
                             n.food = 0;
                             n.is_dead = true;
-                            world_grid[n.phenotype_idx()][n.y * WORLD_WIDTH + n.x] = -1; 
+                            world_grid[n.phenotype_idx()][n.pos] = -1; 
                         } else if (other_predator_count > 0) {
                             int my_allies = 0;
-                            for (int d = 0; d < 5; d++) {
-                                int nx = tor_cord(b.x + dx[d], WORLD_WIDTH);
-                                int ny = tor_cord(b.y + dy[d], WORLD_LENGTH);
-                                if (world_grid[b_layer][ny * WORLD_WIDTH + nx] >= 0) my_allies++;
+                            for (int d = 0; d < 4; d++) {
+                                int npos = grid_neighbors[b.pos][d];
+                                if (world_grid[b_layer][npos] >= 0) my_allies++;
                             }
 
                             int valid_other_predators[40];
@@ -297,10 +304,9 @@ int main() {
                                 int n_layer = n.phenotype_idx();
                                 
                                 int their_allies = 0;
-                                for (int d = 0; d < 5; d++) {
-                                    int nx = tor_cord(n.x + dx[d], WORLD_WIDTH);
-                                    int ny = tor_cord(n.y + dy[d], WORLD_LENGTH);
-                                    if (world_grid[n_layer][ny * WORLD_WIDTH + nx] >= 0) their_allies++;
+                                for (int d = 0; d < 4; d++) {
+                                    int npos = grid_neighbors[n.pos][d];
+                                    if (world_grid[n_layer][npos] >= 0) their_allies++;
                                 }
 
                                 if (my_allies > their_allies) {
@@ -314,17 +320,16 @@ int main() {
                                 b.food += n.food;
                                 n.food = 0;
                                 n.is_dead = true;
-                                world_grid[n.phenotype_idx()][n.y * WORLD_WIDTH + n.x] = -1; 
+                                world_grid[n.phenotype_idx()][n.pos] = -1; 
                             }
                         }
                     }
 
                     if (!b.is_motile()) {
                         // Diffusion
-                        for (int dir = 1; dir < 5; dir++) {
-                            int nx = tor_cord(b.x + dx[dir], WORLD_WIDTH);
-                            int ny = tor_cord(b.y + dy[dir], WORLD_LENGTH);
-                            int n_idx = world_grid[b_layer][ny * WORLD_WIDTH + nx];
+                        for (int dir = 0; dir < 4; dir++) {
+                            int npos = grid_neighbors[b.pos][dir];
+                            int n_idx = world_grid[b_layer][npos];
                             if (n_idx >= 0) {
                                 Bac& n = bacs[n_idx];
                                 if (!n.is_spore && !n.is_dead && !n.is_dormant) {
@@ -339,22 +344,20 @@ int main() {
                     } else {
                         // Movement
                         int dir = 1 + (xorshift32() % 4);
-                        int nx = tor_cord(b.x + dx[dir], WORLD_WIDTH);
-                        int ny = tor_cord(b.y + dy[dir], WORLD_LENGTH);
-                        if (world_grid[b_layer][ny * WORLD_WIDTH + nx] == -1) {
-                            world_grid[b_layer][b.y * WORLD_WIDTH + b.x] = -1;
-                            b.x = nx; b.y = ny;
-                            world_grid[b_layer][b.y * WORLD_WIDTH + b.x] = i;
+                        int npos = grid_neighbors[b.pos][dir];
+                        if (world_grid[b_layer][npos] == -1) {
+                            world_grid[b_layer][b.pos] = -1;
+                            b.pos = npos;
+                            world_grid[b_layer][b.pos] = i;
                         }
                     }
 
                     if (b.food >= 20) {
                         int dir = 1 + (xorshift32() % 4);
-                        int nx = tor_cord(b.x + dx[dir], WORLD_WIDTH);
-                        int ny = tor_cord(b.y + dy[dir], WORLD_LENGTH);
+                        int npos = grid_neighbors[b.pos][dir];
                         
                         bool is_child_spore = (xorshift32() % 2 == 0);
-                        Bac child = create_bac(nx, ny, is_child_spore, b.r, b.g, b.b, true);
+                        Bac child = create_bac(npos, is_child_spore, b.r, b.g, b.b, true);
                         if (xorshift32() % 2 == 0) {
                             int channel = xorshift32() % 3;
                             if (channel == 0) {
@@ -371,10 +374,10 @@ int main() {
                             new_children.push_back(child);
                         } else {
                             int c_layer = child.phenotype_idx();
-                            if (world_grid[c_layer][ny * WORLD_WIDTH + nx] == -1) {
+                            if (world_grid[c_layer][npos] == -1) {
                                 b.food -= 10;
                                 new_children.push_back(child);
-                                world_grid[c_layer][ny * WORLD_WIDTH + nx] = -2; // Reserve
+                                world_grid[c_layer][npos] = -2; // Reserve
                             }
                         }
                     }
@@ -412,7 +415,8 @@ int main() {
                             int bx = px * 2 + dx2;
                             int by = py * 2 + dy2;
                             for (int l = 0; l < 8; l++) {
-                                int b_idx = world_grid[l][by * WORLD_WIDTH + bx];
+                                int bpos = by * WORLD_WIDTH + bx;
+                                int b_idx = world_grid[l][bpos];
                                 if (b_idx >= 0 && !bacs[b_idx].is_dormant) {
                                     occupying.push_back(b_idx);
                                 }
