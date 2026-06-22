@@ -27,9 +27,16 @@ inline float fast_randf() {
     return (xorshift32() & 0xFFFFFF) / (float)0x1000000;
 }
 
+inline int tor_cord(int val, int max_val) {
+    val = val % max_val;
+    if (val < 0) val += max_val;
+    return val;
+}
+
 struct Bac {
     int pos;               // Grid coordinates
     int food;
+    int8_t vx, vy;
     bool is_spore;
     bool is_dormant;
     bool is_dead;
@@ -71,6 +78,8 @@ Bac create_bac(int pos, bool as_spore, uint8_t r = 0, uint8_t g = 0, uint8_t b =
     Bac bac;
     bac.pos = pos;
     bac.food = 10;
+    bac.vx = 0;
+    bac.vy = 0;
     bac.is_spore = as_spore;
     bac.is_dormant = false;
     bac.is_dead = false;
@@ -198,7 +207,11 @@ int main() {
                     bool is_white = world_white[b.pos];
 
                     if (b.is_spore) {
-                        b.pos = grid_neighbors[b.pos][xorshift32() % 4];
+                        int sx = b.pos % WORLD_WIDTH;
+                        int sy = b.pos / WORLD_WIDTH;
+                        sx = tor_cord(sx + b.vx, WORLD_WIDTH);
+                        sy = tor_cord(sy + b.vy, WORLD_LENGTH);
+                        b.pos = sy * WORLD_WIDTH + sx;
                         
                         is_white = world_white[b.pos];
                         
@@ -372,6 +385,9 @@ int main() {
                         }
                         
                         if (is_child_spore) {
+                            child.vx = (xorshift32() % 21) - 10;
+                            child.vy = (xorshift32() % 21) - 10;
+                            if (child.vx == 0 && child.vy == 0) child.vx = 1;
                             b.food -= 10;
                             new_children.push_back(child);
                         } else {
