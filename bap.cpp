@@ -163,10 +163,16 @@ int main() {
     bool quit = false;
     bool paused = false;
     SDL_Event event;
-
     int frames = 0;
     int frames_total = 0;
     auto last_time = std::chrono::steady_clock::now();
+
+    // Open FFmpeg pipe for lossless video encoding
+    FILE *ffmpeg = popen("ffmpeg -y -f rawvideo -pix_fmt bgra -s 1440x1080 -r 60 -i - -c:v libx264 -preset ultrafast -crf 0 output.mp4", "w");
+    if (!ffmpeg) {
+        cout << "Failed to open ffmpeg pipe! Make sure ffmpeg is installed." << endl;
+        return 1;
+    }
 
     read_im(world_white, simulation_ticks / TICKS_PER_FRAME);
     vector<uint32_t> pixels(WINDOW_WIDTH * WINDOW_HEIGHT, 0xFF000000);
@@ -417,7 +423,7 @@ int main() {
                 simulation_ticks++;
 
                 if (simulation_ticks % 10 == 0) {
-                    // ==== Build pixels and save BMP every 10th tick ====
+                    // ==== Build pixels and write to FFmpeg every 10th tick ====
                     std::fill(pixels.begin(), pixels.end(), 0xFF000000); 
 
                     vector<int> occupying;
@@ -446,13 +452,8 @@ int main() {
                         }
                     }
 
-                    SDL_Surface* out_surf_32 = SDL_CreateRGBSurfaceFrom(pixels.data(), WINDOW_WIDTH, WINDOW_HEIGHT, 32, WINDOW_WIDTH * 4, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
-                    SDL_Surface* out_surf_24 = SDL_CreateRGBSurface(0, WINDOW_WIDTH, WINDOW_HEIGHT, 24, 0x0000FF, 0x00FF00, 0xFF0000, 0);
-                    SDL_BlitSurface(out_surf_32, NULL, out_surf_24, NULL);
-                    string out_path = "output_frames/frame_" + to_string(frames_total) + ".bmp";
-                    SDL_SaveBMP(out_surf_24, out_path.c_str());
-                    SDL_FreeSurface(out_surf_24);
-                    SDL_FreeSurface(out_surf_32);
+                    // Write directly to FFmpeg pipe
+                    fwrite(pixels.data(), 4, WINDOW_WIDTH * WINDOW_HEIGHT, ffmpeg);
                     frames_total++;
 
                     if (frames_total >= 70000) { // Limit to ~70k frames
@@ -488,6 +489,11 @@ int main() {
     }
 
     IMG_Quit();
+    if (ffmpeg) {
+        pclose(ffmpeg);
+        cout << "Saved video to output.mp4" << endl;
+    }
+
     SDL_DestroyTexture(texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
