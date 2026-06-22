@@ -224,7 +224,7 @@ int main() {
                                 for (int l = 0; l < 8; l++) {
                                     if (l == b_layer) continue;
                                     int n_idx = world_grid[l][ny * WORLD_WIDTH + nx];
-                                    if (n_idx != -1 && !bacs[n_idx].is_dead && !bacs[n_idx].is_spore) {
+                                    if (n_idx >= 0 && !bacs[n_idx].is_dead && !bacs[n_idx].is_spore) {
                                         can_wake = true; break;
                                     }
                                 }
@@ -254,7 +254,7 @@ int main() {
                             for (int l = 0; l < 8; l++) {
                                 if (l == b_layer) continue; // Don't eat same phenotype
                                 int n_idx = world_grid[l][ny * WORLD_WIDTH + nx];
-                                if (n_idx != -1) {
+                                if (n_idx >= 0) {
                                     Bac& n = bacs[n_idx];
                                     if (!n.is_spore && !n.is_dead) {
                                         b.hp += n.hp;
@@ -273,7 +273,7 @@ int main() {
                             int nx = tor_cord(b.x + dx[dir], WORLD_WIDTH);
                             int ny = tor_cord(b.y + dy[dir], WORLD_LENGTH);
                             int n_idx = world_grid[b_layer][ny * WORLD_WIDTH + nx];
-                            if (n_idx != -1) {
+                            if (n_idx >= 0) {
                                 Bac& n = bacs[n_idx];
                                 if (!n.is_spore && !n.is_dead && !n.is_dormant) {
                                     if (b.hp > n.hp) {
