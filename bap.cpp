@@ -53,8 +53,8 @@ struct Bac {
 };
 
 inline int tor_cord(int val, int max_val) {
-    if (val < 0) return val + max_val;
-    if (val >= max_val) return val - max_val;
+    val = val % max_val;
+    if (val < 0) val += max_val;
     return val;
 }
 
