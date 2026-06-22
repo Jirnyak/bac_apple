@@ -243,15 +243,16 @@ int main() {
                     b.hp -= 0.1f;
 
                     if (!b.is_predator() && is_white) {
-                        b.hp += 0.5f; 
+                        b.hp += 0.5f; if (b.hp > b.hp_max * 2.0f) b.hp = b.hp_max * 2.0f; 
                     }
 
                     if (b.is_predator()) {
                         // Look for prey across all layers in the same cell and adjacent cells
-                        for (int dir = 0; dir < 5; dir++) {
+                        bool ate = false;
+                        for (int dir = 0; dir < 5 && !ate; dir++) {
                             int nx = tor_cord(b.x + dx[dir], WORLD_WIDTH);
                             int ny = tor_cord(b.y + dy[dir], WORLD_LENGTH);
-                            for (int l = 0; l < 8; l++) {
+                            for (int l = 0; l < 8 && !ate; l++) {
                                 if (l == b_layer) continue; // Don't eat same phenotype
                                 int n_idx = world_grid[l][ny * WORLD_WIDTH + nx];
                                 if (n_idx >= 0) {
@@ -261,6 +262,7 @@ int main() {
                                         n.hp = 0;
                                         n.is_dead = true;
                                         world_grid[l][ny * WORLD_WIDTH + nx] = -1; 
+                                        ate = true;
                                     }
                                 }
                             }
@@ -365,14 +367,16 @@ int main() {
             for (int py = 0; py < WINDOW_HEIGHT; py++) {
                 for (int px = 0; px < WINDOW_WIDTH; px++) {
                     occupying.clear();
-                    // Each 2x2 block maps to 1 window pixel. We just sample the top-left for speed,
-                    // or sample all 8 layers at (px*2, py*2).
-                    int bx = px * 2;
-                    int by = py * 2;
-                    for (int l = 0; l < 8; l++) {
-                        int b_idx = world_grid[l][by * WORLD_WIDTH + bx];
-                        if (b_idx >= 0 && !bacs[b_idx].is_dormant) {
-                            occupying.push_back(b_idx);
+                    for (int dy2 = 0; dy2 < 2; dy2++) {
+                        for (int dx2 = 0; dx2 < 2; dx2++) {
+                            int bx = px * 2 + dx2;
+                            int by = py * 2 + dy2;
+                            for (int l = 0; l < 8; l++) {
+                                int b_idx = world_grid[l][by * WORLD_WIDTH + bx];
+                                if (b_idx >= 0 && !bacs[b_idx].is_dormant) {
+                                    occupying.push_back(b_idx);
+                                }
+                            }
                         }
                     }
                     if (!occupying.empty()) {
