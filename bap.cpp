@@ -227,6 +227,7 @@ int main() {
                             continue;
                         }
                     }
+                    if (b.is_spore) continue;
 
                     // Metabolism
                     b.food -= 1;
@@ -245,8 +246,6 @@ int main() {
                         }
                         continue;
                     }
-
-                    if (b.is_spore) continue;
 
                     if (b.is_predator()) {
                         int non_predators[40];
