@@ -243,7 +243,7 @@ int main() {
                     b.hp -= 0.1f;
 
                     if (!b.is_predator() && is_white) {
-                        b.hp += 0.5f; if (b.hp > b.hp_max * 2.0f) b.hp = b.hp_max * 2.0f; 
+                        b.hp += 0.5f; 
                     }
 
                     if (b.is_predator()) {
