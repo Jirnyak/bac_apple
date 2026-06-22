@@ -148,9 +148,8 @@ int main() {
         }
     }
 
-    int TICKS_PER_FRAME = 100; 
-    int PHYSICS_STEPS = TICKS_PER_FRAME;
-    int simulation_ticks = 40 * TICKS_PER_FRAME;
+    int TICKS_PER_FRAME = 10;
+    int simulation_ticks = 40 * 10;
 
     bool quit = false;
     bool paused = false;
@@ -172,13 +171,16 @@ int main() {
                 switch(event.key.keysym.sym) {
                     case SDLK_SPACE: paused = !paused; break;
                     case SDLK_ESCAPE: quit = true; break;
+                    case SDLK_EQUALS: 
+                    case SDLK_PLUS: TICKS_PER_FRAME = min(100, TICKS_PER_FRAME + 5); break;
+                    case SDLK_MINUS: TICKS_PER_FRAME = max(1, TICKS_PER_FRAME - 5); break;
                 }
             }
             if (event.type == SDL_QUIT) quit = true;
         }
 
         if (!paused) {
-            for (int step = 0; step < PHYSICS_STEPS; step++) {
+            for (int step = 0; step < TICKS_PER_FRAME; step++) {
                 // Populate grids
                 for (int i=0; i<8; i++) std::fill(world_grid[i].begin(), world_grid[i].end(), -1);
                 
