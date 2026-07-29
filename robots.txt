@@ -1,4 +1,3 @@
 User-agent: *
 Allow: /
-
-Sitemap: https://jirnyak.github.io/bac_apple/sitemap.xml
+Sitemap: https://Jirnyak.github.io/bac_apple/sitemap.xml
