@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/marko1olo/gigahrush/main/docs/cyber_banner.jpg" width="100%" alt="Bac Apple Banner"/>
+<img src="https://raw.githubusercontent.com/marko1olo/gigahrush/main/docs/banner_bac_apple.jpg" width="100%" alt="Bac Apple Banner"/>
 
 # 🍎 BAC_APPLE — Bacteria Simulation from Bad Apple Frames
 
