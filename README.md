@@ -1,5 +1,8 @@
 <div align="center">
 
+![BAC_APPLE Banner](https://raw.githubusercontent.com/marko1olo/gigahrush/main/docs/banner_bac_apple.jpg)
+
+
 # bac_apple — Technical System Architecture & Specification
 
 [![License](https://img.shields.io/badge/License-True%20People's%20v2.0-red?style=for-the-badge)](LICENSE.md)
