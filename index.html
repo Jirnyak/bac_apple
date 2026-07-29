@@ -3,33 +3,377 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>bac_apple — Official Technical Showcase</title>
-    <meta name="description" content="Hardware cycle-accurate Apple II computer emulator.">
-    <link href="https://fonts.googleapis.com/css2?family=VT323:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>bac_apple | The Biology of Animation</title>
+    <meta name="description" content="Bacteria colonies grow and die according to the luminosity values extracted from Bad Apple!! video frames — generative life simulation driven by animation.">
     <style>
-        :root { --bg: #051907; --accent: #22c55e; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: var(--bg); color: #f1f5f9; font-family: 'VT323', sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; overflow-x: hidden; }
-        .hero-box { max-width: 900px; width: 100%; text-align: center; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 3rem 2rem; backdrop-filter: blur(10px); box-shadow: 0 0 50px rgba(0,0,0,0.8), 0 0 30px var(--accent); }
-        h1 { font-size: 3.5rem; font-weight: 900; color: #fff; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 0.5rem; text-shadow: 0 0 20px var(--accent); }
-        .tag { display: inline-block; background: rgba(255,255,255,0.05); border: 1px solid var(--accent); color: var(--accent); font-weight: 700; padding: 0.4rem 1.2rem; border-radius: 4px; font-size: 0.85rem; margin-bottom: 1.5rem; letter-spacing: 1px; }
-        p.desc { font-size: 1.2rem; color: #94a3b8; max-width: 700px; margin: 0 auto 2.5rem; line-height: 1.6; }
-        .btn-group { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-        .btn { padding: 1rem 2.2rem; background: var(--accent); color: #000; font-weight: 700; text-decoration: none; border-radius: 6px; font-size: 1rem; transition: all 0.3s; text-transform: uppercase; }
-        .btn:hover { background: #fff; box-shadow: 0 0 30px #fff; transform: translateY(-2px); }
-        .btn-sec { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.2); }
-        .btn-sec:hover { background: rgba(255,255,255,0.1); }
+        :root {
+            --bg-color: #000000;
+            --text-main: #f5f5f7;
+            --text-muted: #86868b;
+            --glass-bg: rgba(25, 25, 25, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --accent: #ffffff;
+            --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-stack);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Abstract glowing background blobs */
+        .bg-glow {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 80vw;
+            height: 80vw;
+            max-width: 800px;
+            max-height: 800px;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0) 70%);
+            z-index: -1;
+            animation: pulse 10s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.8; }
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            height: 48px;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        
+        .nav-content {
+            width: 100%;
+            max-width: 980px;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-size: 12px;
+            letter-spacing: -0.01em;
+            color: #c8c8c8;
+        }
+        .nav-content a {
+            color: #c8c8c8;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            font-weight: 400;
+        }
+        .nav-content a:hover {
+            color: var(--accent);
+        }
+        .nav-brand {
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 700;
+            letter-spacing: -0.05em;
+            background: linear-gradient(180deg, #fff 0%, #a1a1a6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation-delay: 0.2s;
+        }
+
+        .hero h2 {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            font-weight: 400;
+            color: var(--text-main);
+            margin-bottom: 20px;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation-delay: 0.4s;
+        }
+
+        .hero p {
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            color: var(--text-muted);
+            max-width: 600px;
+            margin-bottom: 40px;
+            line-height: 1.5;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation-delay: 0.6s;
+        }
+
+        .cta-btn {
+            display: inline-block;
+            background: var(--text-main);
+            color: var(--bg-color);
+            padding: 12px 24px;
+            border-radius: 980px;
+            font-size: 17px;
+            font-weight: 400;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            animation-delay: 0.8s;
+        }
+
+        .cta-btn:hover {
+            background: #ffffff;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+
+        /* Feature Section */
+        .features {
+            padding: 120px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 60px;
+        }
+
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border);
+            border-radius: 30px;
+            padding: 40px;
+            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s ease;
+            opacity: 0;
+            transform: translateY(50px);
+        }
+        
+        .glass-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.2);
+        }
+
+        .glass-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .glass-card p {
+            color: var(--text-muted);
+            line-height: 1.6;
+            font-size: 1.1rem;
+        }
+
+        .icon-container {
+            width: 50px;
+            height: 50px;
+            border-radius: 15px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.0));
+            border: 1px solid rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 25px;
+            font-size: 24px;
+        }
+
+        /* Large Typography Section */
+        .statement {
+            padding: 150px 20px;
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .statement h2 {
+            font-size: clamp(2rem, 5vw, 4rem);
+            line-height: 1.1;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            background: linear-gradient(180deg, #fff 0%, #555 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            opacity: 0;
+            transform: scale(0.95);
+            transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .statement h2.visible {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--glass-border);
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            background: rgba(0,0,0,0.5);
+        }
+        
+        footer a {
+            color: var(--text-main);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Animations */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="hero-box">
-        <h1>bac_apple</h1>
-        <div class="tag">APPLE II RETRO COMPUTER EMULATION</div>
-        <p class="desc">Hardware cycle-accurate Apple II computer emulator.</p>
-        <div class="btn-group">
-            <a href="https://github.com/Jirnyak/bac_apple" class="btn" target="_blank">🚀 Open GitHub Repo</a>
-            <a href="https://github.com/Jirnyak/bac_apple#readme" class="btn btn-sec" target="_blank">📖 Read Spec</a>
+    <div class="bg-glow"></div>
+
+    <nav>
+        <div class="nav-content">
+            <a href="#" class="nav-brand">bac_apple</a>
+            <div>
+                <a href="https://github.com/Jirnyak/bac_apple">GitHub</a>
+            </div>
         </div>
-    </div>
+    </nav>
+
+    <section class="hero">
+        <h1>bac_apple</h1>
+        <h2>Pro. Beyond. Biology.</h2>
+        <p>Bacteria colonies grow and die according to the luminosity values extracted from Bad Apple!! video frames. A generative life simulation driven entirely by animation.</p>
+        <a href="https://github.com/Jirnyak/bac_apple" class="cta-btn">View on GitHub</a>
+    </section>
+
+    <section class="features">
+        <div class="statement">
+            <h2 class="reveal-text">Dark pixels spawn life. Bright pixels bring death. The animation is the ecosystem.</h2>
+        </div>
+
+        <div class="feature-grid">
+            <div class="glass-card reveal-card">
+                <div class="icon-container">🎬</div>
+                <h3>Frame-Driven Biology</h3>
+                <p>Each individual video frame maps luminosity directly to bacteria spawn and death probabilities, bridging the gap between digital art and simulated life.</p>
+            </div>
+            
+            <div class="glass-card reveal-card" style="transition-delay: 0.1s;">
+                <div class="icon-container">🦠</div>
+                <h3>Colony Dynamics</h3>
+                <p>Organisms reproduce, compete for resources, and expire based on the evolving environmental conditions set by the shadow-art animation.</p>
+            </div>
+            
+            <div class="glass-card reveal-card" style="transition-delay: 0.2s;">
+                <div class="icon-container">⚡</div>
+                <h3>Real-Time C++</h3>
+                <p>Engineered with a high-performance simulation loop in C++ and SDL2. Thousands of agents update seamlessly per frame with zero-allocation execution.</p>
+            </div>
+            
+            <div class="glass-card reveal-card" style="transition-delay: 0.3s;">
+                <div class="icon-container">🎨</div>
+                <h3>Generative Visuals</h3>
+                <p>The visual output isn't just a video — it's the emergent behavior of a living colony synchronizing perfectly with the iconic silhouette animation.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="statement" style="padding-top: 50px; padding-bottom: 150px;">
+        <h2 class="reveal-text" style="font-size: clamp(1.5rem, 3vw, 2.5rem); color: var(--text-muted); -webkit-text-fill-color: var(--text-muted);">
+            "100% Verified. True People's License v2.0."
+        </h2>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 Jirnyak & Adolf Petushkov. Open Source under True People's License v2.0.</p>
+        <p style="margin-top: 10px;">
+            <a href="https://github.com/Jirnyak/bac_apple">Repository</a> | 
+            <a href="https://github.com/Jirnyak/bac_apple/blob/main/README.md">Documentation</a>
+        </p>
+    </footer>
+
+    <script>
+        // Intersection Observer for Apple-like scroll reveals
+        document.addEventListener('DOMContentLoaded', () => {
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.15
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        // Optional: stop observing once revealed
+                        // observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            // Observe text elements
+            document.querySelectorAll('.reveal-text').forEach(el => {
+                observer.observe(el);
+            });
+
+            // Observe glass cards
+            document.querySelectorAll('.reveal-card').forEach(el => {
+                observer.observe(el);
+            });
+        });
+    </script>
 </body>
 </html>
