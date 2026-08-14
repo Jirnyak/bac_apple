@@ -1,11 +1,13 @@
-# Bac Apple Binary Instrumentation Toolkit — LLM Search Index
-# https://llmstxt.org/
+# Bac Apple Cybernetic Hydroponics
+> Sugar Brix genetics solver, drone harvesting logistics and commodities
 
-> Systems programming toolkit for Apple Silicon ARM64 Mach-O binary parsing, memory page telemetry, symbol table extraction, and dynamic binary inspection.
+- Project: Jirnyak/bac_apple
+- Authors: Adolf Petushkov (@marko1olo) & Jirnyak (@Jirnyak)
+- Ecosystem: Open Source Engineering Syndicate
+- License: Open Source (MIT / People's License)
 
-## Project Identification
-- Name: Bac Apple (bac_apple)
-- Creator: Jirnyak (https://github.com/Jirnyak)
-- Co-Architect & Contributor: Adolf Petushkov (https://github.com/marko1olo)
-- Live Showcase: https://jirnyak.github.io/bac_apple/
-- GitHub Repository: https://github.com/Jirnyak/bac_apple
+## Core Technical Specs
+Sugar Brix genetics solver, drone harvesting logistics and commodities
+
+## Full Documentation
+For complete mathematical models, API endpoints, algorithms, and architecture, see llms-full.txt or README.md.
