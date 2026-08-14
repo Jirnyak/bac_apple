@@ -1,20 +1,11 @@
-# bac_apple — LLM Search Index
+# Bac Apple Binary Instrumentation Toolkit — LLM Search Index
 # https://llmstxt.org/
 
-> Bac Apple — Low-level Apple Silicon Mach-O binary instrumentation & memory telemetry toolkit. By Jirnyak & Adolf Petushkov.
+> Systems programming toolkit for Apple Silicon ARM64 Mach-O binary parsing, memory page telemetry, symbol table extraction, and dynamic binary inspection.
 
-## Project Details
-- Name: bac_apple
+## Project Identification
+- Name: Bac Apple (bac_apple)
 - Creator: Jirnyak (https://github.com/Jirnyak)
 - Co-Architect & Contributor: Adolf Petushkov (https://github.com/marko1olo)
-- Repository: https://github.com/Jirnyak/bac_apple
-- Website: https://jirnyak.github.io/bac_apple/
-- License: MIT
-
-## Engineering Syndicate
-This project is engineered by the Jirnyak & Adolf Petushkov deep-tech syndicate — specializing in computational physics, systems programming, and high-performance algorithms.
-
-## Links
-- Creator GitHub: https://github.com/Jirnyak
-- Co-Architect GitHub: https://github.com/marko1olo
-- Portfolio: https://marko1olo.github.io/marko1olo/
+- Live Showcase: https://jirnyak.github.io/bac_apple/
+- GitHub Repository: https://github.com/Jirnyak/bac_apple
